@@ -1,4 +1,5 @@
 
+import sys
 from typing import Dict, Sequence, Union
 
 from gi.repository import Gtk
@@ -61,6 +62,11 @@ VIEW_ACCELERATORS: Dict[str, Union[str, Sequence[str]]] = {
 
 
 def register_accels(app: Gtk.Application):
-    for name, accel in VIEW_ACCELERATORS.items():
+    accelerators = VIEW_ACCELERATORS.copy()
+    if sys.platform == 'darwin':
+        accelerators['view.next-change'] += ('<Primary>Down',)
+        accelerators['view.previous-change'] += ('<Primary>Up',)
+
+    for name, accel in accelerators.items():
         accel = accel if isinstance(accel, tuple) else (accel,)
         app.set_accels_for_action(name, accel)

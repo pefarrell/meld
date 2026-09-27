@@ -32,6 +32,7 @@ from meld.const import (
 from meld.dirdiff import DirDiff
 from meld.filediff import FileDiff
 from meld.imagediff import ImageDiff, files_are_images
+from meld.macoswindow import enable_native_titlebar, maximize_window
 from meld.melddoc import ComparisonState, MeldDoc
 from meld.menuhelpers import replace_menu_section
 from meld.misc import guess_if_remote_x11
@@ -52,6 +53,7 @@ class MeldWindow(Gtk.ApplicationWindow):
     __gtype_name__ = 'MeldWindow'
 
     appvbox = Gtk.Template.Child()
+    header_bar = Gtk.Template.Child()
     folder_filter_button = Gtk.Template.Child()
     text_filter_button = Gtk.Template.Child()
     gear_menu_button = Gtk.Template.Child()
@@ -64,6 +66,8 @@ class MeldWindow(Gtk.ApplicationWindow):
 
     def __init__(self):
         super().__init__()
+
+        enable_native_titlebar(self, self.header_bar, self.appvbox)
 
         # Manually handle GAction additions
         actions = (
@@ -110,6 +114,7 @@ class MeldWindow(Gtk.ApplicationWindow):
 
         self.window_state = SavedWindowState()
         self.window_state.bind(self)
+        maximize_window(self)
 
         self.should_close = False
         self.idle_hooked = 0

@@ -147,7 +147,8 @@ try:
         libintl.bind_textdomain_codeset(locale_domain, 'UTF-8')
         libintl.textdomain(locale_domain)
         del libintl
-    else:
+    elif all(hasattr(locale, name) for name in (
+            'bindtextdomain', 'bind_textdomain_codeset', 'textdomain')):
         locale.bindtextdomain(locale_domain, str(locale_dir))
         locale.bind_textdomain_codeset(locale_domain, 'UTF-8')
         locale.textdomain(locale_domain)
@@ -475,8 +476,17 @@ def run_application():
     app = MeldApp()
 
     if sys.platform != 'win32':
-        from gi.repository import GLib
-        GLib.unix_signal_add(
+        try:
+            from gi.repository import GLib, GLibUnix
+
+            signal_add = GLibUnix.signal_add
+        except (ImportError, AttributeError):
+            # Support glib <= 2.86
+            from gi.repository import GLib
+
+            signal_add = GLib.unix_signal_add
+
+        signal_add(
             GLib.PRIORITY_DEFAULT, signal.SIGINT, lambda *args: app.quit())
 
     return app.run(sys.argv)

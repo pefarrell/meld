@@ -18,6 +18,7 @@ folders = {
     'imagediff.py',
     'iohelpers.py',
     'linkmap.py',
+    'macoswindow.py',
     'meldapp.py',
     'meldbuffer.py',
     'melddoc.py',

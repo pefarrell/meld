@@ -18,6 +18,7 @@ data/meld.gresource
 
 # Build & distribution artifacts
 build/
+build-macos/
 dist/
 MANIFEST
 

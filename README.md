@@ -7,6 +7,10 @@ compare files, directories, and version controlled projects. It provides
 two- and three-way comparison of both files and directories, and supports
 many version control systems including Git, Mercurial, Bazaar, CVS and Subversion.
 
+This fork includes a macOS application bundle with a native Cocoa window frame
+and standard traffic-light controls, including compatibility with Rectangle.
+See [README-macOS.md](README-macOS.md) for build and installation instructions.
+
 Meld helps you review code changes, understand patches, and makes enormous
 merge conflicts slightly less painful.
 

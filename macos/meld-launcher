@@ -1,0 +1,51 @@
+#!/bin/zsh
+
+set -eu
+
+MELD_APP="$(cd "$(dirname "$0")/../.." && pwd)"
+MELD_BINARY="$MELD_APP/Contents/MacOS/Meld-bin"
+
+if [[ ! -x "$MELD_BINARY" ]]; then
+    print -u2 "Meld's bundled executable is missing at $MELD_BINARY"
+    exit 1
+fi
+
+resolve_existing_path() {
+    local argument="$1"
+    local directory="$PWD"
+    local candidate
+
+    if [[ "$argument" == /* ]]; then
+        print -r -- "$argument"
+        return
+    fi
+
+    if [[ -e "$argument" ]]; then
+        print -r -- "$PWD/$argument"
+        return
+    fi
+
+    # git difftool occasionally starts its tool in a subdirectory while
+    # handing it a worktree-relative path. Find that existing file from an
+    # ancestor rather than opening an empty/error pane.
+    while [[ "$directory" != / ]]; do
+        candidate="$directory/$argument"
+        if [[ -e "$candidate" ]]; then
+            print -r -- "$candidate"
+            return
+        fi
+        directory="${directory:h}"
+    done
+
+    print -r -- "$argument"
+}
+
+arguments=()
+for argument in "$@"; do
+    arguments+=("$(resolve_existing_path "$argument")")
+done
+
+# GTK's Quartz backend must be started by Launch Services.  A direct launch
+# from Git is an unregistered command-line process and recent macOS releases
+# abort it while Quartz tries to transform its process type.
+exec /usr/bin/open -W -n "$MELD_APP" --args "${arguments[@]}"
