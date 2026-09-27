@@ -114,7 +114,10 @@ class MeldWindow(Gtk.ApplicationWindow):
 
         self.window_state = SavedWindowState()
         self.window_state.bind(self)
-        maximize_window(self)
+        if maximize_window(self):
+            # Quartz can ignore a maximize request made before the native
+            # window is mapped. Reapply it as soon as the Cocoa window exists.
+            self.connect('map', lambda window: window.maximize())
 
         self.should_close = False
         self.idle_hooked = 0
