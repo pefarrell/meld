@@ -29,12 +29,12 @@ def enable_native_titlebar(window, header_bar, content_box, platform=None):
     return True
 
 
-def maximize_window(window, platform=None):
-    """Start Meld maximized on macOS, without entering full-screen mode."""
+def fullscreen_window(window, platform=None):
+    """Start Meld in native full-screen mode on macOS."""
     if platform is None:
         platform = sys.platform
     if platform != 'darwin':
         return False
 
-    window.maximize()
+    window.fullscreen()
     return True

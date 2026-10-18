@@ -1,4 +1,4 @@
-from meld.macoswindow import enable_native_titlebar, maximize_window
+from meld.macoswindow import enable_native_titlebar, fullscreen_window
 
 
 class Recorder:
@@ -38,19 +38,19 @@ def test_native_titlebar_moves_header_bar_into_content_on_macos():
     assert window.calls == [('set_titlebar', (None,))]
 
 
-def test_macos_window_starts_maximized():
+def test_macos_window_starts_fullscreen():
     window = Recorder()
 
-    changed = maximize_window(window, platform='darwin')
+    changed = fullscreen_window(window, platform='darwin')
 
     assert changed
-    assert window.calls == [('maximize', ())]
+    assert window.calls == [('fullscreen', ())]
 
 
 def test_non_macos_window_keeps_saved_size():
     window = Recorder()
 
-    changed = maximize_window(window, platform='linux')
+    changed = fullscreen_window(window, platform='linux')
 
     assert not changed
     assert not window.calls
