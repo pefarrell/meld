@@ -68,7 +68,7 @@ if [[ -z "$STAGED_SITE" || ! -d "$STAGED_SITE/meld" ]]; then
 fi
 
 mkdir -p "$CONTENTS/MacOS" "$BUNDLE_SITE" "$RESOURCES/bin" \
-         "$RESOURCES/share/glib-2.0/schemas"
+         "$RESOURCES/lib" "$RESOURCES/share/glib-2.0/schemas"
 
 install -m 755 "$PREFIX_ROOT/bin/meld" "$RESOURCES/bin/meld"
 cp -R "$STAGED_SITE/meld" "$BUNDLE_SITE/"
@@ -76,6 +76,11 @@ cp -R "$PREFIX_ROOT/share/meld" "$RESOURCES/share/"
 cp -R "$PREFIX_ROOT/share/locale" "$RESOURCES/share/"
 cp -R "$PREFIX_ROOT/share/icons" "$RESOURCES/share/"
 install -m 644 "$ROOT_DIR/macos/Info.plist" "$CONTENTS/Info.plist"
+
+cc -dynamiclib -O2 -Wl,-rpath,/opt/homebrew/lib \
+    -o "$RESOURCES/lib/meld-native-window.dylib" \
+    "$ROOT_DIR/macos/native-window.m" \
+    $(pkg-config --cflags --libs gdk-3.0) -framework AppKit
 
 find /opt/homebrew/share/glib-2.0/schemas -maxdepth 1 -name '*.xml' \
     -exec cp {} "$RESOURCES/share/glib-2.0/schemas/" \;

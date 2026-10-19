@@ -32,7 +32,7 @@ from meld.const import (
 from meld.dirdiff import DirDiff
 from meld.filediff import FileDiff
 from meld.imagediff import ImageDiff, files_are_images
-from meld.macoswindow import enable_native_titlebar, maximize_window
+from meld.macoswindow import enable_native_titlebar, fill_screen
 from meld.melddoc import ComparisonState, MeldDoc
 from meld.menuhelpers import replace_menu_section
 from meld.misc import guess_if_remote_x11
@@ -114,10 +114,9 @@ class MeldWindow(Gtk.ApplicationWindow):
 
         self.window_state = SavedWindowState()
         self.window_state.bind(self)
-        if maximize_window(self):
-            # Quartz can ignore a maximize request made before the native
-            # window is mapped. Reapply it as soon as the Cocoa window exists.
-            self.connect('map', lambda window: window.maximize())
+        # GTK applies its final allocation after emitting map. Schedule the
+        # Cocoa frame change for the next main-loop turn so it is not undone.
+        self.connect('map', self.on_map_fill_screen)
 
         self.should_close = False
         self.idle_hooked = 0
@@ -127,6 +126,13 @@ class MeldWindow(Gtk.ApplicationWindow):
         if IS_DEVEL:
             style_context = self.get_style_context()
             style_context.add_class("devel")
+
+    def on_map_fill_screen(self, window):
+        GLib.idle_add(self._fill_screen_after_map, window)
+
+    def _fill_screen_after_map(self, window):
+        fill_screen(window)
+        return GLib.SOURCE_REMOVE
 
     def do_realize(self):
         Gtk.ApplicationWindow.do_realize(self)

@@ -5,6 +5,8 @@
 # the Free Software Foundation, either version 2 of the License, or
 # (at your option) any later version.
 
+import ctypes
+import os
 import sys
 
 
@@ -29,12 +31,24 @@ def enable_native_titlebar(window, header_bar, content_box, platform=None):
     return True
 
 
-def maximize_window(window, platform=None):
-    """Start Meld maximized on macOS without entering a full-screen Space."""
+def fill_screen(window, platform=None, native_filler=None):
+    """Fill the display on macOS without entering a full-screen Space."""
     if platform is None:
         platform = sys.platform
     if platform != 'darwin':
         return False
 
-    window.maximize()
-    return True
+    gdk_window = window.get_window()
+    if gdk_window is None:
+        return False
+
+    if native_filler is None:
+        resources = os.path.join(
+            os.path.dirname(sys.executable), '..', 'Resources', 'lib')
+        library = ctypes.CDLL(os.path.join(
+            resources, 'meld-native-window.dylib'))
+        native_filler = library.meld_macos_fill_screen
+        native_filler.argtypes = (ctypes.c_void_p,)
+        native_filler.restype = ctypes.c_int
+
+    return bool(native_filler(ctypes.c_void_p(hash(gdk_window))))
