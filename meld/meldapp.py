@@ -26,6 +26,7 @@ import meld.accelerators
 import meld.conf
 from meld.conf import _
 from meld.filediff import FileDiff
+from meld.macoswindow import set_background_service
 from meld.meldwindow import MeldWindow
 from meld.preferences import PreferencesDialog
 
@@ -84,15 +85,19 @@ class MeldApp(Gtk.Application):
 
         if self.background_service:
             self.hold()
-
-        self.new_window()
+            set_background_service(True)
+        else:
+            self.new_window()
 
     def do_activate(self):
         self.get_active_window().present()
 
     def do_command_line(self, command_line):
-        if not self.get_windows():
-            self.new_window()
+        if (self.background_service and
+                not command_line.get_is_remote() and
+                len(command_line.get_arguments()) == 1):
+            return 0
+
         tab = self.parse_args(command_line)
 
         if isinstance(tab, int):
@@ -108,7 +113,7 @@ class MeldApp(Gtk.Application):
             tab.command_line = command_line
             tab.close_signal.connect(done)
 
-        window = self.get_active_window()
+        window = self.get_active_window() or self.new_window()
         if not window.has_pages():
             window.append_new_comparison()
         self.activate()
@@ -116,8 +121,11 @@ class MeldApp(Gtk.Application):
 
     def do_window_removed(self, widget):
         Gtk.Application.do_window_removed(self, widget)
-        if not len(self.get_windows()) and not self.background_service:
-            self.quit()
+        if not len(self.get_windows()):
+            if self.background_service:
+                set_background_service(True)
+            else:
+                self.quit()
 
     # We can't override do_local_command_line because it has no introspection
     # annotations: https://bugzilla.gnome.org/show_bug.cgi?id=687912
@@ -158,6 +166,8 @@ class MeldApp(Gtk.Application):
         self.quit()
 
     def new_window(self):
+        if self.background_service:
+            set_background_service(False)
         window = MeldWindow()
         self.add_window(window)
         return window

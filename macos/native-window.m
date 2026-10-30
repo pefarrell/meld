@@ -27,3 +27,13 @@ meld_macos_fill_screen (GdkWindow *window)
     [native_window setFrame:screen.frame display:YES animate:NO];
     return 1;
 }
+
+int
+meld_macos_set_background_service (int background)
+{
+    NSApplicationActivationPolicy policy;
+
+    policy = background ? NSApplicationActivationPolicyAccessory
+                        : NSApplicationActivationPolicyRegular;
+    return [[NSApplication sharedApplication] setActivationPolicy:policy];
+}

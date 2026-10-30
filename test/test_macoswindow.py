@@ -1,4 +1,8 @@
-from meld.macoswindow import enable_native_titlebar, fill_screen
+from meld.macoswindow import (
+    enable_native_titlebar,
+    fill_screen,
+    set_background_service,
+)
 
 
 class Recorder:
@@ -64,3 +68,23 @@ def test_non_macos_window_keeps_saved_size():
 
     assert not changed
     assert not window.calls
+
+
+def test_macos_background_service_changes_activation_policy():
+    calls = []
+
+    changed = set_background_service(
+        True, platform='darwin', native_setter=calls.append)
+
+    assert changed is False
+    assert calls == [1]
+
+
+def test_non_macos_background_service_is_unchanged():
+    calls = []
+
+    changed = set_background_service(
+        True, platform='linux', native_setter=calls.append)
+
+    assert not changed
+    assert not calls

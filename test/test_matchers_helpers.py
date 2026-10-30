@@ -12,7 +12,7 @@ def test_small_match_does_not_start_worker():
     try:
         matcher.match("before", "after", lambda opcodes: None)
 
-        assert matcher.thread.pid is None
+        assert matcher.thread is None
         assert ("before", "after") in matcher.cache
     finally:
         matcher.stop()

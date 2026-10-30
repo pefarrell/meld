@@ -2,6 +2,7 @@ import gc
 import logging
 import multiprocessing
 import queue
+import sys
 import time
 
 from gi.repository import GLib
@@ -58,20 +59,14 @@ class CachedSequenceMatcher:
         """
         self.scheduler = scheduler
         self.cache = {}
-        self.tasks = multiprocessing.Queue()
-        self.tasks.cancel_join_thread()
-        # Limiting the result queue here has the effect of giving us
-        # much better interactivity. Without this limit, the
-        # result-checker tends to get starved and all highlights get
-        # delayed until we're almost completely finished.
-        self.results = multiprocessing.Queue(5)
-        self.results.cancel_join_thread()
-        self.thread = MatcherWorker(self.tasks, self.results)
+        self.tasks = None
+        self.results = None
+        self.thread = None
         self.task_id = 1
         self.queued_matches = {}
 
     def stop(self) -> None:
-        if self.thread.pid is not None:
+        if self.thread is not None:
             self.tasks.put((MatcherWorker.END_TASK, ('', '')))
             if self.thread.is_alive():
                 self.thread.join(self.TASK_GRACE_PERIOD)
@@ -87,8 +82,9 @@ class CachedSequenceMatcher:
             if q is not None:
                 q.close()
                 q.join_thread()
-        self.thread.tasks = None
-        self.thread.results = None
+        if self.thread is not None:
+            self.thread.tasks = None
+            self.thread.results = None
         self.tasks = None
         self.results = None
         self.thread = None
@@ -101,7 +97,8 @@ class CachedSequenceMatcher:
             opcodes = self.cache[texts][0]
             GLib.idle_add(lambda: cb(opcodes))
         except KeyError:
-            if len(text1) + len(textn) <= self.SYNC_MATCH_LIMIT:
+            if (sys.platform == 'darwin' or
+                    len(text1) + len(textn) <= self.SYNC_MATCH_LIMIT):
                 matcher = MatcherWorker.matcher_class(None, text1, textn)
                 opcodes = matcher.get_opcodes()
                 self.cache[texts] = [opcodes, time.time()]
@@ -110,7 +107,13 @@ class CachedSequenceMatcher:
                 GLib.idle_add(lambda: self.enqueue_task(texts, cb))
 
     def enqueue_task(self, texts, cb):
-        if self.thread.pid is None:
+        if self.thread is None:
+            self.tasks = multiprocessing.Queue()
+            self.tasks.cancel_join_thread()
+            # Limiting the result queue here gives us better interactivity.
+            self.results = multiprocessing.Queue(5)
+            self.results.cancel_join_thread()
+            self.thread = MatcherWorker(self.tasks, self.results)
             self.thread.start()
         if not bool(self.queued_matches):
             self.scheduler.add_task(self.check_results)

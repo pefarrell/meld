@@ -10,6 +10,12 @@ import os
 import sys
 
 
+def _native_library():
+    resources = os.path.join(
+        os.path.dirname(sys.executable), '..', 'Resources', 'lib')
+    return ctypes.CDLL(os.path.join(resources, 'meld-native-window.dylib'))
+
+
 def enable_native_titlebar(window, header_bar, content_box, platform=None):
     """Use Quartz's native window frame while retaining Meld's toolbar.
 
@@ -43,12 +49,25 @@ def fill_screen(window, platform=None, native_filler=None):
         return False
 
     if native_filler is None:
-        resources = os.path.join(
-            os.path.dirname(sys.executable), '..', 'Resources', 'lib')
-        library = ctypes.CDLL(os.path.join(
-            resources, 'meld-native-window.dylib'))
+        library = _native_library()
         native_filler = library.meld_macos_fill_screen
         native_filler.argtypes = (ctypes.c_void_p,)
         native_filler.restype = ctypes.c_int
 
     return bool(native_filler(ctypes.c_void_p(hash(gdk_window))))
+
+
+def set_background_service(background, platform=None, native_setter=None):
+    """Hide a windowless warm service from Dock and application switching."""
+    if platform is None:
+        platform = sys.platform
+    if platform != 'darwin':
+        return False
+
+    if native_setter is None:
+        library = _native_library()
+        native_setter = library.meld_macos_set_background_service
+        native_setter.argtypes = (ctypes.c_int,)
+        native_setter.restype = ctypes.c_int
+
+    return bool(native_setter(int(background)))
