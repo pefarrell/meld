@@ -71,6 +71,8 @@ mkdir -p "$CONTENTS/MacOS" "$BUNDLE_SITE" "$RESOURCES/bin" \
          "$RESOURCES/lib" "$RESOURCES/share/glib-2.0/schemas"
 
 install -m 755 "$PREFIX_ROOT/bin/meld" "$RESOURCES/bin/meld"
+install -m 755 "$ROOT_DIR/macos/meld-remote.py" \
+    "$RESOURCES/bin/meld-remote"
 cp -R "$STAGED_SITE/meld" "$BUNDLE_SITE/"
 cp -R "$PREFIX_ROOT/share/meld" "$RESOURCES/share/"
 cp -R "$PREFIX_ROOT/share/locale" "$RESOURCES/share/"

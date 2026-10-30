@@ -18,6 +18,7 @@ import io
 import logging
 import optparse
 import os
+import sys
 
 from gi.repository import Gdk, Gio, GLib, Gtk
 
@@ -54,6 +55,10 @@ class MeldApp(Gtk.Application):
         Gtk.StyleContext.add_provider_for_screen(
             Gdk.Screen.get_default(), provider,
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        self.background_service = (
+            sys.platform == 'darwin' and
+            os.environ.get('MELD_MACOS_BACKGROUND_SERVER') == '1'
+        )
 
     def make_resource_path(self, resource_path: str) -> str:
         return f'{self.props.resource_base_path}/{resource_path}'
@@ -77,12 +82,17 @@ class MeldApp(Gtk.Application):
         clip = Gtk.Clipboard.get_default(Gdk.Display.get_default())
         clip.set_can_store(None)
 
+        if self.background_service:
+            self.hold()
+
         self.new_window()
 
     def do_activate(self):
         self.get_active_window().present()
 
     def do_command_line(self, command_line):
+        if not self.get_windows():
+            self.new_window()
         tab = self.parse_args(command_line)
 
         if isinstance(tab, int):
@@ -106,7 +116,7 @@ class MeldApp(Gtk.Application):
 
     def do_window_removed(self, widget):
         Gtk.Application.do_window_removed(self, widget)
-        if not len(self.get_windows()):
+        if not len(self.get_windows()) and not self.background_service:
             self.quit()
 
     # We can't override do_local_command_line because it has no introspection

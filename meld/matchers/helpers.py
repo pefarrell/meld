@@ -46,6 +46,9 @@ class CachedSequenceMatcher:
     """
 
     TASK_GRACE_PERIOD = 1
+    # This matches FileDiff's normal inline-highlighting limit. Comparisons at
+    # this size take milliseconds in-process, much less than spawning Python.
+    SYNC_MATCH_LIMIT = 20000
 
     def __init__(self, scheduler):
         """Create a new caching sequence matcher
@@ -66,14 +69,14 @@ class CachedSequenceMatcher:
         self.thread = MatcherWorker(self.tasks, self.results)
         self.task_id = 1
         self.queued_matches = {}
-        GLib.idle_add(self.thread.start)
 
     def stop(self) -> None:
-        self.tasks.put((MatcherWorker.END_TASK, ('', '')))
-        if self.thread.is_alive():
-            self.thread.join(self.TASK_GRACE_PERIOD)
-            if self.thread.exitcode is None:
-                self.thread.terminate()
+        if self.thread.pid is not None:
+            self.tasks.put((MatcherWorker.END_TASK, ('', '')))
+            if self.thread.is_alive():
+                self.thread.join(self.TASK_GRACE_PERIOD)
+                if self.thread.exitcode is None:
+                    self.thread.terminate()
         self.cache = {}
         self.queued_matches = {}
 
@@ -98,9 +101,17 @@ class CachedSequenceMatcher:
             opcodes = self.cache[texts][0]
             GLib.idle_add(lambda: cb(opcodes))
         except KeyError:
-            GLib.idle_add(lambda: self.enqueue_task(texts, cb))
+            if len(text1) + len(textn) <= self.SYNC_MATCH_LIMIT:
+                matcher = MatcherWorker.matcher_class(None, text1, textn)
+                opcodes = matcher.get_opcodes()
+                self.cache[texts] = [opcodes, time.time()]
+                GLib.idle_add(lambda: cb(opcodes))
+            else:
+                GLib.idle_add(lambda: self.enqueue_task(texts, cb))
 
     def enqueue_task(self, texts, cb):
+        if self.thread.pid is None:
+            self.thread.start()
         if not bool(self.queued_matches):
             self.scheduler.add_task(self.check_results)
         self.queued_matches[self.task_id] = (texts, cb)

@@ -4,6 +4,10 @@ set -eu
 
 MELD_APP="$(cd "$(dirname "$0")/../.." && pwd)"
 MELD_BINARY="$MELD_APP/Contents/MacOS/Meld-bin"
+MELD_REMOTE="$MELD_APP/Contents/Resources/bin/meld-remote"
+MELD_PYTHON=/opt/homebrew/opt/python@3.13/bin/python3.13
+DBUS_DAEMON=/opt/homebrew/bin/dbus-daemon
+GDBUS=/opt/homebrew/bin/gdbus
 
 if [[ ! -x "$MELD_BINARY" ]]; then
     print -u2 "Meld's bundled executable is missing at $MELD_BINARY"
@@ -45,7 +49,40 @@ for argument in "$@"; do
     arguments+=("$(resolve_existing_path "$argument")")
 done
 
-# GTK's Quartz backend must be started by Launch Services.  A direct launch
-# from Git is an unregistered command-line process and recent macOS releases
-# abort it while Quartz tries to transform its process type.
-exec /usr/bin/open -W -n "$MELD_APP" --args "${arguments[@]}"
+if [[ ! -x "$MELD_REMOTE" || ! -x "$MELD_PYTHON" ||
+      ! -x "$DBUS_DAEMON" || ! -x "$GDBUS" ]]; then
+    # GTK's Quartz backend must be started by Launch Services. A direct launch
+    # from Git is an unregistered command-line process on current macOS.
+    exec /usr/bin/open -W -n "$MELD_APP" --args "${arguments[@]}"
+fi
+
+runtime_dir="${TMPDIR%/}/org.gnome.Meld-$UID"
+mkdir -p -m 700 "$runtime_dir"
+chmod 700 "$runtime_dir"
+export DBUS_SESSION_BUS_ADDRESS="unix:path=$runtime_dir/bus"
+export MELD_MACOS_BACKGROUND_SERVER=1
+
+if ! "$GDBUS" call \
+        --address "$DBUS_SESSION_BUS_ADDRESS" \
+        --dest org.freedesktop.DBus \
+        --object-path /org/freedesktop/DBus \
+        --method org.freedesktop.DBus.ListNames >/dev/null 2>&1; then
+    "$DBUS_DAEMON" --session --fork \
+        --address="$DBUS_SESSION_BUS_ADDRESS" --nopidfile
+fi
+
+owner=$("$GDBUS" call \
+    --address "$DBUS_SESSION_BUS_ADDRESS" \
+    --dest org.freedesktop.DBus \
+    --object-path /org/freedesktop/DBus \
+    --method org.freedesktop.DBus.NameHasOwner org.gnome.Meld)
+
+if [[ "$owner" != *true* ]]; then
+    /usr/bin/open -n "$MELD_APP"
+    "$GDBUS" wait --address "$DBUS_SESSION_BUS_ADDRESS" \
+        --timeout 10 org.gnome.Meld
+fi
+
+# This lightweight client bypasses Launch Services and blocks until Meld
+# closes the comparison, preserving git difftool's expected behaviour.
+exec "$MELD_PYTHON" "$MELD_REMOTE" "${arguments[@]}"
