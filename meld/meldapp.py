@@ -26,7 +26,7 @@ import meld.accelerators
 import meld.conf
 from meld.conf import _
 from meld.filediff import FileDiff
-from meld.macoswindow import set_background_service
+from meld.macoswindow import set_background_service, set_window_ready
 from meld.meldwindow import MeldWindow
 from meld.preferences import PreferencesDialog
 
@@ -85,6 +85,7 @@ class MeldApp(Gtk.Application):
 
         if self.background_service:
             self.hold()
+            set_window_ready(False)
             set_background_service(True)
         else:
             self.new_window()
@@ -123,6 +124,7 @@ class MeldApp(Gtk.Application):
         Gtk.Application.do_window_removed(self, widget)
         if not len(self.get_windows()):
             if self.background_service:
+                set_window_ready(False)
                 set_background_service(True)
             else:
                 self.quit()

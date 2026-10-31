@@ -62,6 +62,7 @@ mkdir -p -m 700 "$runtime_dir"
 chmod 700 "$runtime_dir"
 export DBUS_SESSION_BUS_ADDRESS="unix:path=$runtime_dir/bus"
 export MELD_MACOS_BACKGROUND_SERVER=1
+export MELD_MACOS_WINDOW_READY="$runtime_dir/window-ready"
 
 if ! "$GDBUS" call \
         --address "$DBUS_SESSION_BUS_ADDRESS" \
@@ -79,6 +80,7 @@ owner=$("$GDBUS" call \
     --method org.freedesktop.DBus.NameHasOwner org.gnome.Meld)
 
 if [[ "$owner" != *true* ]]; then
+    rm -f "$MELD_MACOS_WINDOW_READY"
     /usr/bin/open -n "$MELD_APP"
     "$GDBUS" wait --address "$DBUS_SESSION_BUS_ADDRESS" \
         --timeout 10 org.gnome.Meld
@@ -90,8 +92,15 @@ fi
 client_pid=$!
 
 # On macOS 14+, background applications cannot bring themselves forward.
-# Launch Services treats this command as user-initiated activation and reuses
-# the existing process; it does not create another Meld instance.
-/usr/bin/open -a "$MELD_APP"
+# Meld creates this marker after GTK maps its comparison window; only then do
+# we ask Launch Services to activate the already-running process.
+for attempt in {1..1000}; do
+    [[ -e "$MELD_MACOS_WINDOW_READY" ]] && break
+    kill -0 "$client_pid" 2>/dev/null || break
+    /bin/sleep 0.01
+done
+if [[ -e "$MELD_MACOS_WINDOW_READY" ]]; then
+    /usr/bin/open -a "$MELD_APP"
+fi
 
 wait "$client_pid"

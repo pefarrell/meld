@@ -7,6 +7,7 @@
 
 import ctypes
 import os
+from pathlib import Path
 import sys
 
 
@@ -71,3 +72,23 @@ def set_background_service(background, platform=None, native_setter=None):
         native_setter.restype = ctypes.c_int
 
     return bool(native_setter(int(background)))
+
+
+def set_window_ready(ready, platform=None, marker=None):
+    """Publish whether the warm macOS process has a mapped window."""
+    if platform is None:
+        platform = sys.platform
+    if platform != 'darwin':
+        return False
+
+    if marker is None:
+        marker = os.environ.get('MELD_MACOS_WINDOW_READY')
+    if not marker:
+        return False
+
+    marker_path = Path(marker)
+    if ready:
+        marker_path.touch()
+    else:
+        marker_path.unlink(missing_ok=True)
+    return True

@@ -2,6 +2,7 @@ from meld.macoswindow import (
     enable_native_titlebar,
     fill_screen,
     set_background_service,
+    set_window_ready,
 )
 
 
@@ -88,3 +89,19 @@ def test_non_macos_background_service_is_unchanged():
 
     assert not changed
     assert not calls
+
+
+def test_macos_window_readiness_marker(tmp_path):
+    marker = tmp_path / 'window-ready'
+
+    assert set_window_ready(True, platform='darwin', marker=marker)
+    assert marker.exists()
+    assert set_window_ready(False, platform='darwin', marker=marker)
+    assert not marker.exists()
+
+
+def test_non_macos_window_readiness_is_unchanged(tmp_path):
+    marker = tmp_path / 'window-ready'
+
+    assert not set_window_ready(True, platform='linux', marker=marker)
+    assert not marker.exists()
